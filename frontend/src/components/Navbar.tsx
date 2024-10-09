@@ -1,9 +1,8 @@
-import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "../components/ui/button";
 import { User } from 'lucide-react';
 
-const Navbar: React.FC = () => {
+export function Navbar() {
     const location = useLocation();
 
     const getLinkClass = (path: string) => {
@@ -20,7 +19,7 @@ const Navbar: React.FC = () => {
               <div className="flex-shrink-0 flex items-center">
                 <span className="text-2xl font-bold text-gray-800">DataBreachChecker</span>
               </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <div className="hidden sm:ml-40 sm:flex sm:space-x-8">
                 <Link to="/" className={getLinkClass("/")}>
                   Home
                 </Link>
@@ -29,6 +28,9 @@ const Navbar: React.FC = () => {
                 </Link>
                 <Link to="/about" className={getLinkClass("/about")}>
                   About
+                </Link>
+                <Link to="/pricing" className={getLinkClass("/pricing")}>
+                  Pricing
                 </Link>
                 <Link to="/contact" className={getLinkClass("/contact")}>
                   Contact
@@ -47,5 +49,3 @@ const Navbar: React.FC = () => {
       </nav>
     )
 }
-
-export default Navbar;
