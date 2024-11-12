@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"time"
+
+	"github.com/joho/godotenv"
 
 	"github.com/Rikjimue/TECH120-Prototype/backend/pkg/api"
 	"github.com/Rikjimue/TECH120-Prototype/backend/pkg/database"
@@ -14,51 +14,37 @@ import (
 
 func main() {
 	// Setup logging
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	// Load environment variables
+	log.Println("Starting API service...")
+
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Initialize environment variables
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is not set")
+		fmt.Println(os.Getenv("DATABASE_URL"))
+		log.Fatal("Failed to initialize DATABASE_URL environment variable")
+	}
+	address := os.Getenv("ADDRESS")
+	if address == "" {
+		log.Fatal("Failed to initialize ADDRESS environment variable")
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		log.Fatal("PORT environment vairable is not set")
-	}
-
-	// Init database
+	// Initialize database
 	db, err := database.InitDB(dbURL)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
 
-	// Create router and start server
+	// Create routing
 	router := api.NewRouter(db)
-	server := &http.Server{
-		Addr:    ":" + port,
+
+	s := &http.Server{
+		Addr:    address,
 		Handler: router,
 	}
-
-	go func() {
-		log.Printf("Server starting on: %v", port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
-		}
-	}()
-
-	// Shutdown server on signal interupt
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	log.Println("Shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
-	}
-
-	log.Println("Server exiting")
+	log.Fatal(s.ListenAndServe())
 }

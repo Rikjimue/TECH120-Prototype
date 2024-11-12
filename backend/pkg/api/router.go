@@ -3,24 +3,36 @@ package api
 import (
 	"database/sql"
 	"net/http"
+
+	"github.com/Rikjimue/TECH120-Prototype/backend/pkg/api/handlers"
+	"github.com/Rikjimue/TECH120-Prototype/backend/pkg/repositories"
+	"github.com/Rikjimue/TECH120-Prototype/backend/pkg/services"
 )
 
+// TODO: Implement middleware, implement sub-routing
+
+// Create router
 func NewRouter(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	checkBreachHandler := &CheckBreachHandler{DB: db}
+	// Initialize repositories
+	//userRepo := repositories.NewSQLUserRepository(db)
+	breachRepo := repositories.NewSQLBreachRepository(db)
 
-	mux.Handle("/api/check-breach", methodMiddleware(checkBreachHandler, "POST"))
+	// Initialize Services
+	//authService := services.NewAuthService(userRepo)
+	breachService := services.NewBreachService(breachRepo)
+
+	// Initialize handlers
+	//authHandler := handlers.NewAuthHandler(authService)
+	breachHandler := handlers.NewBreachHandler(breachService)
+
+	// Setup routes
+	//mux.HandleFunc("POST /api/v0/signup", authHandler.Signup)
+	//mux.HandleFunc("POST /api/v0/login", authHandler.Login)
+
+	mux.HandleFunc("GET /api/vo/breach-checker", breachHandler.BreachChecker)
+	mux.HandleFunc("POST /api/v0/sensitive-checker", breachHandler.SensitiveChecker)
 
 	return mux
-}
-
-func methodMiddleware(next http.Handler, method string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != method {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
