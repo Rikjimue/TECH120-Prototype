@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, BarChart3, CheckCircle, Shield } from "lucide-react"
 
 export default function Dashboard() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [recentBreaches, setRecentBreaches] = useState([
     { service: "EmailProvider", date: "2023-05-15", severity: "high" },
     { service: "SocialMedia", date: "2023-05-10", severity: "medium" },
@@ -11,10 +10,11 @@ export default function Dashboard() {
   ])
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <div className="w-full min-h-screen p-4 pt-16 overflow-x-hidden"> {/* Added pt-16 for extra top padding */}
+      <h1 className="text-3xl font-bold mb-6 text-center">Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Breaches Checked</CardTitle>
@@ -25,6 +25,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">+20.1% from last month</p>
           </CardContent>
         </Card>
+        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">High Severity Breaches</CardTitle>
@@ -35,6 +36,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">+2.5% from last month</p>
           </CardContent>
         </Card>
+        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Protected Accounts</CardTitle>
@@ -47,7 +49,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Detail Cards */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Recent Breaches Card */}
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Recent Breaches</CardTitle>
@@ -72,6 +76,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
         
+        {/* Breach Trends Card */}
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Breach Trends</CardTitle>
@@ -80,7 +85,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="h-[200px] flex items-center justify-center">
               <BarChart3 className="h-16 w-16 text-muted-foreground" />
-              <p className="text-muted-foreground">Chart placeholder</p>
+              <p className="text-muted-foreground ml-2">Chart placeholder</p>
             </div>
           </CardContent>
         </Card>

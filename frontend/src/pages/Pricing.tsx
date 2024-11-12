@@ -17,7 +17,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "9.99",
+    price: "$9.99",
     description: "For individuals who want the best",
     features: ["Unlimited users", "Unlimited projects", "1TB storage", "24/7 dedicated support"]
   }
@@ -65,9 +65,9 @@ export default function Pricing() {
 
       <h3 className="text-2xl font-bold text-center mb-8">Feature Comparison</h3>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse bg-white dark:bg-gray-800">
           <thead>
-            <tr className="bg-gray-100">
+            <tr className="bg-gray-200 dark:bg-gray-700">
               <th className="border p-2 text-left">Feature</th>
               <th className="border p-2 text-center">Free</th>
               <th className="border p-2 text-center">Basic</th>
@@ -76,7 +76,7 @@ export default function Pricing() {
           </thead>
           <tbody>
             {featureComparison.map((row, index) => (
-              <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : ""}>
+              <tr key={index} className={index % 2 === 0 ? "bg-gray-50 dark:bg-gray-800" : "dark:bg-gray-800"}>
                 <td className="border p-2">{row.feature}</td>
                 <td className="border p-2 text-center">
                   {typeof row.free === "boolean" ? (

@@ -63,9 +63,28 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* Light mode background */
+body {
+  background-color: #ffffff; /* Light background for regular mode */
+  color: #000000; /* Adjust text color for light mode */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode background */
+body.dark {
+  background-color: #0a2540; /* Dark background for dark mode */
+  color: #ffffff; /* Adjust text color for dark mode */
+}
+
+/* Navbar link styling */
+.navbar a {
+  color: #000000; /* Dark text for light mode */
+}
+
+body.dark .navbar a {
+  color: #ffffff; /* Light text for dark mode */
+}
+
   h1, h2, h3, h4, h5, h6 {
     @apply text-4xl font-bold text-primary;
   }

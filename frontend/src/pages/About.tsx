@@ -31,36 +31,40 @@ export default function AboutPage() {
   ]
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">About DataBreachChecker</h1>
+    <div className="container mx-auto p-4 pt-16"> {/* Added pt-16 for extra top padding */}
+      <h1 className="text-2xl sm:text-3xl lg:text-4xl text-center font-bold mb-6 dark:text-gray-200">
+        About DataBreachChecker
+      </h1>
       
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Our Mission</CardTitle>
-          <CardDescription>Empowering individuals and organizations to protect their digital identities</CardDescription>
+          <CardTitle className="text-lg sm:text-xl md:text-2xl text-gray-800 dark:text-gray-200">Our Mission</CardTitle>
+          <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            Empowering individuals and organizations to protect their digital identities
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-700">
+          <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300">
             At DataBreachChecker, we are committed to providing a robust and user-friendly platform that helps you stay informed about potential security risks to your personal information. In an era where data breaches are becoming increasingly common, we believe that knowledge and proactive measures are key to maintaining your digital security.
           </p>
           <div className="mt-4 flex items-center space-x-2">
             <Shield className="h-5 w-5 text-indigo-600" />
-            <span className="text-indigo-600 font-medium">Your security is our top priority</span>
+            <span className="text-indigo-600 font-medium text-sm sm:text-base">Your security is our top priority</span>
           </div>
         </CardContent>
       </Card>
 
-      <h2 className="text-2xl font-semibold mb-4">Frequently Asked Questions</h2>
+      <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold mb-4 dark:text-gray-200">Frequently Asked Questions</h2>
       <Accordion type="single" collapsible className="w-full">
         {faqs.map((faq, index) => (
           <AccordionItem value={`item-${index}`} key={index}>
-            <AccordionTrigger>{faq.question}</AccordionTrigger>
+            <AccordionTrigger className="text-sm sm:text-base md:text-lg">{faq.question}</AccordionTrigger>
             <AccordionContent>
-              <p className="text-gray-700">{faq.answer}</p>
+              <p className="text-sm sm:text-base md:text-lg dark:text-gray-300">{faq.answer}</p>
             </AccordionContent>
           </AccordionItem>
         ))}
       </Accordion>
     </div>
-  )
+  );
 }
