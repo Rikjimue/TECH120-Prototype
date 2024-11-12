@@ -80,7 +80,7 @@ export function Home() {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const response = await fetch('localhost:8080/api/v0/breach-check', {
+            const response = await fetch('http://localhost:8080/api/v0/breach-check', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -103,12 +103,15 @@ export function Home() {
         e.preventDefault();
         setIsSensitiveLoading(true);
         try {
-            const response = await fetch('localhost:8080/api/v0/sensitive-check', {
+            const response = await fetch('http://localhost:8080/api/v0/sensitive-check', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ sensitiveType, sensitiveValue }),
+                body: JSON.stringify({
+                    field: sensitiveType,
+                    hash: sensitiveValue
+                }),
             });
             const data = await response.json();
             setSensitiveResults(data.results);
