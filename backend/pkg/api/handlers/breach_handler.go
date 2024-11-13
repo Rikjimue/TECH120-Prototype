@@ -21,6 +21,23 @@ func NewBreachHandler(breachService *services.BreachService) *BreachHandler {
 
 func (h *BreachHandler) BreachChecker(w http.ResponseWriter, r *http.Request) {
 
+	var req models.NormalSearchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	matches, err := h.breachService.SearchBreach(ctx, &req)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(matches)
 }
 
 func (h *BreachHandler) SensitiveChecker(w http.ResponseWriter, r *http.Request) {

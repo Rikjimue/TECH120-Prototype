@@ -16,25 +16,34 @@ func NewBreachService(breachRepo repositories.BreachRepository) *BreachService {
 	return &BreachService{breachRepo: breachRepo}
 }
 
-//func (s *BreachService) CheckBreach(ctx context.Context) (*[]models.Breach, error) {
-// Create a slice for the fields to iterate through
-//fields := make([]string, 0, len(req.Fields))
-//for field := range req.Fields {
-//fields = append(fields, field)
-//}
+func (s *BreachService) SearchBreach(ctx context.Context, req *models.NormalSearchRequest) (*models.NormalSearchResponse, error) {
 
-// Returns a TableField struct that holds the table name and the fields to be queried
-// In the sentive service only 1 field is expected to be
-//tableFields, err := s.breachRepo.GetTableNamesWithField(ctx, fields)
+	if req == nil {
+		return nil, fmt.Errorf("invalid request: request is nil")
+	}
 
-//if err != nil {
-//return nil, err
-//}
+	response, err := s.breachRepo.SearchBreachMatch(ctx, req.Fields)
 
-// Query those tables with the field and find
-// Have the table names, now I need to query those table names with the fields combined with the value of the request.
-//s.BreachRepo.FindBreachMatches(ctx, tableFields, )
-//}
+	if err != nil {
+		return nil, fmt.Errorf("error searching breach match: %w", err)
+	}
+
+	return response, nil
+
+	/*
+		Get a map of the tables and an array of the fields
+		{
+			[tablename: []fields]
+		}
+
+		Go through the table and find the rowID with the most amount of matches. If there is none the tablename is removed from the map
+		Then it creates breach matches from the ID
+
+		SELECT breach_name,  FROM breach_metadata WHERE breach_fields && $1
+
+		Use common table expressions to get find the common fields of a []map[fields]content. Query to see if the content is inside all the tables. Then format it for a response of one per each table that has the most fields matching.
+	*/
+}
 
 func (s *BreachService) SearchSensitive(ctx context.Context, req *models.SensitiveSearchRequest) (*models.SensitiveSearchResponse, error) {
 	// Request validation
@@ -46,7 +55,7 @@ func (s *BreachService) SearchSensitive(ctx context.Context, req *models.Sensiti
 	match, err := s.breachRepo.SearchSensitiveMatch(ctx, req.Field, req.Hash)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error searching sensitive data: %w", err)
 	}
 
 	potentialMatches := make(map[string]*models.NormalSearchResponse)

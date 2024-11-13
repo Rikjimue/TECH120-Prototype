@@ -31,7 +31,7 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 	//mux.HandleFunc("POST /api/v0/signup", authHandler.Signup)
 	//mux.HandleFunc("POST /api/v0/login", authHandler.Login)
 
-	mux.HandleFunc("POST /api/vo/breach-checker", breachHandler.BreachChecker)
+	mux.HandleFunc("POST /api/v0/breach-checker", breachHandler.BreachChecker)
 	mux.HandleFunc("POST /api/v0/sensitive-checker", breachHandler.SensitiveChecker)
 
 	return mux

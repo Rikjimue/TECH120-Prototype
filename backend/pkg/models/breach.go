@@ -28,6 +28,3 @@ type SensitiveTables struct {
 	Field      string
 	TableNames []string
 }
-
-type User struct {
-}
