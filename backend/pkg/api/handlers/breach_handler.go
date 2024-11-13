@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -59,5 +58,4 @@ func (h *BreachHandler) SensitiveChecker(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(matches)
-	fmt.Println(json.NewEncoder(w).Encode(matches))
 }
