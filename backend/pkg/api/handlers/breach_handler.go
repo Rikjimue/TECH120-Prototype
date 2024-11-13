@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -19,7 +20,7 @@ func NewBreachHandler(breachService *services.BreachService) *BreachHandler {
 }
 
 func (h *BreachHandler) BreachChecker(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("Recived breach request")
 	var req models.NormalSearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -40,7 +41,7 @@ func (h *BreachHandler) BreachChecker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BreachHandler) SensitiveChecker(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("Recived sensitive request")
 	var req models.SensitiveSearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
