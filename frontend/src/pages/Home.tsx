@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { X, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SHA1 } from 'crypto-js';
 
 interface SearchField {
     id: string;
@@ -79,20 +80,59 @@ export function Home() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        
+        // Create a map of field labels to values
+        const formattedSearchValues = searchFields.reduce((acc, field) => {
+            if (searchValues[field.id]) {
+                acc[field.label.toLowerCase().replace(' ', '_')] = searchValues[field.id];
+            }
+            return acc;
+        }, {} as Record<string, string>);
+    
+        const requestBody = {
+            Fields: formattedSearchValues
+        };
+    
+        console.log('Sending request to server:', requestBody);
+    
         try {
             const response = await fetch('http://localhost:8080/api/v0/breach-check', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ searchValues }),
+                body: JSON.stringify(requestBody),
             });
+    
+            if (!response.ok) {
+                console.error('Server response not ok:', {
+                    status: response.status,
+                    statusText: response.statusText
+                });
+                const errorText = await response.text();
+                console.error('Error response body:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+    
             const data = await response.json();
-            setResults(data.results);
+            console.log('Received response from server:', data);
+    
+            if (data.Matches) {
+                const formattedResults = data.Matches.map((match: any) => ({
+                    service: match.name,
+                    date: match.date,
+                    description: match.description,
+                    severity: match.severity.toLowerCase(),
+                    breachedData: match.fields,
+                    changeLink: match.link
+                }));
+                setResults(formattedResults);
+            }
         } catch (error) {
-            console.error('Error fetching breach data:', error);
+            console.error('Error details:', error);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     const handleCloseResults = () => {
@@ -102,6 +142,12 @@ export function Home() {
     const handleSensitiveSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSensitiveLoading(true);
+        
+        // Generate full SHA1 hash of the sensitive value
+        const fullHash = SHA1(sensitiveValue).toString();
+        // Take first 5 characters for k-anonymity
+        const partialHash = fullHash.substring(0, 5);
+        
         try {
             const response = await fetch('http://localhost:8080/api/v0/sensitive-check', {
                 method: 'POST',
@@ -110,16 +156,43 @@ export function Home() {
                 },
                 body: JSON.stringify({
                     field: sensitiveType,
-                    hash: sensitiveValue
+                    hash: partialHash // Send only partial hash for k-anonymity
                 }),
             });
+    
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+    
             const data = await response.json();
-            setSensitiveResults(data.results);
+            
+            // Server returns potential matches based on partial hash
+            if (data.PotentialPasswords) {
+                // Find our exact match in the potential passwords using full hash
+                const exactMatch = data.PotentialPasswords[fullHash];
+                
+                if (exactMatch && exactMatch.Matches) {
+                    // Format only the matches from our exact hash match
+                    const formattedResults = exactMatch.Matches.map((match: any) => ({
+                        service: match.name,
+                        date: match.date,
+                        description: match.description,
+                        severity: match.severity.toLowerCase(),
+                        breachedData: match.fields,
+                        changeLink: match.link
+                    }));
+    
+                    setSensitiveResults(formattedResults);
+                } else {
+                    setSensitiveResults([]); // No exact matches found
+                }
+            }
         } catch (error) {
             console.error('Error fetching sensitive breach data:', error);
+        } finally {
+            setIsSensitiveLoading(false);
+            setSensitiveValue('');
         }
-        setIsSensitiveLoading(false);
-        setSensitiveValue('');
     };
 
     const handleCloseSensitiveResults = () => {
