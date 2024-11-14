@@ -96,7 +96,7 @@ export function Home() {
         console.log('Sending request to server:', requestBody);
     
         try {
-            const response = await fetch('http://localhost:8080/api/v0/breach-check', {
+            const response = await fetch('https://v5flsvdg-8080.use.devtunnels.ms/api/v0/breach-check', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -149,7 +149,7 @@ export function Home() {
         const partialHash = fullHash.substring(0, 5);
         
         try {
-            const response = await fetch('http://localhost:8080/api/v0/sensitive-check', {
+            const response = await fetch('https://v5flsvdg-8080.use.devtunnels.ms/api/v0/sensitive-check', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
