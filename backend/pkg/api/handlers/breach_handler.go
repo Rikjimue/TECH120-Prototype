@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -23,6 +24,7 @@ func (h *BreachHandler) BreachChecker(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Recived breach request")
 	var req models.NormalSearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Invalid request body -> %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -32,6 +34,7 @@ func (h *BreachHandler) BreachChecker(w http.ResponseWriter, r *http.Request) {
 
 	matches, err := h.breachService.SearchBreach(ctx, &req)
 	if err != nil {
+		log.Printf("Internal server error -> %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -44,6 +47,7 @@ func (h *BreachHandler) SensitiveChecker(w http.ResponseWriter, r *http.Request)
 	fmt.Println("Recived sensitive request")
 	var req models.SensitiveSearchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Invalid request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -53,6 +57,7 @@ func (h *BreachHandler) SensitiveChecker(w http.ResponseWriter, r *http.Request)
 
 	matches, err := h.breachService.SearchSensitive(ctx, &req)
 	if err != nil {
+		log.Printf("Internal server error -> %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
