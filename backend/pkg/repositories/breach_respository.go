@@ -31,16 +31,14 @@ func (r *SQLBreachRepository) SearchBreachMatch(ctx context.Context, searchField
 		fieldNames = append(fieldNames, field)
 	}
 
-	// Get matching tables first
 	tablesQuery := `
-		SELECT DISTINCT table_name 
-		FROM breach_metadata 
-		WHERE breach_fields && string_to_array($1, ',')`
-
+        SELECT DISTINCT table_name 
+        FROM breach_metadata 
+        WHERE breach_fields && string_to_array($1, ',')`
 	fieldNamesStr := strings.Join(fieldNames, ",")
 	tableRows, err := r.db.Query(tablesQuery, fieldNamesStr)
 	if err != nil {
-		return nil, fmt.Errorf("error getting matching tables: %v", err)
+		return nil, fmt.Errorf("error getting matching tables -> %v", err)
 	}
 	defer tableRows.Close()
 
@@ -48,7 +46,7 @@ func (r *SQLBreachRepository) SearchBreachMatch(ctx context.Context, searchField
 	for tableRows.Next() {
 		var tableName string
 		if err := tableRows.Scan(&tableName); err != nil {
-			return nil, fmt.Errorf("error scanning table name: %v", err)
+			return nil, fmt.Errorf("error scanning table name -> %v", err)
 		}
 		matchingTables = append(matchingTables, tableName)
 	}
@@ -61,40 +59,67 @@ func (r *SQLBreachRepository) SearchBreachMatch(ctx context.Context, searchField
 	seenMatches := make(map[uint64]bool)
 
 	for _, tableName := range matchingTables {
+		// First, get the columns that exist in this table
+		columnsQuery := `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = $1`
+		columnRows, err := r.db.Query(columnsQuery, tableName)
+		if err != nil {
+			return nil, fmt.Errorf("error getting columns for table %s -> %v", tableName, err)
+		}
+
+		existingColumns := make(map[string]bool)
+		for columnRows.Next() {
+			var columnName string
+			if err := columnRows.Scan(&columnName); err != nil {
+				columnRows.Close()
+				return nil, fmt.Errorf("error scanning column name -> %v", err)
+			}
+			existingColumns[columnName] = true
+		}
+		columnRows.Close()
+
 		var queryParams []interface{}
 		paramCount := 1
-
-		// Build conditions for finding matching records
+		// Build conditions only for existing columns
 		var conditions []string
 		for field, value := range searchFields {
-			conditions = append(conditions, fmt.Sprintf("%s = $%d", field, paramCount))
-			queryParams = append(queryParams, value)
-			paramCount++
+			if existingColumns[field] {
+				conditions = append(conditions, fmt.Sprintf("%s = $%d", field, paramCount))
+				queryParams = append(queryParams, value)
+				paramCount++
+			}
+		}
+
+		// If no valid conditions exist, skip this table
+		if len(conditions) == 0 {
+			continue
 		}
 
 		query := fmt.Sprintf(`
-			SELECT 
-				m.breach_id,
-				m.table_name,
-				m.breach_date,
-				m.breach_description,
-				m.breach_severity,
-				m.breach_link,
-				json_build_object(
-					%s
-				) as fields
-			FROM %s t
-			JOIN breach_metadata m ON m.table_name = '%s'
-			WHERE %s
-			LIMIT 1`,
-			buildFieldChecks(searchFields),
+            SELECT
+                m.breach_id,
+                m.table_name,
+                m.breach_date,
+                m.breach_description,
+                m.breach_severity,
+                m.breach_link,
+                json_build_object(
+                    %s
+                ) as fields
+            FROM %s t
+            JOIN breach_metadata m ON m.table_name = '%s'
+            WHERE %s
+            LIMIT 1`,
+			buildFieldChecks(searchFields, existingColumns),
 			tableName,
 			tableName,
 			strings.Join(conditions, " OR "))
 
 		rows, err := r.db.Query(query, queryParams...)
 		if err != nil {
-			return nil, fmt.Errorf("error querying table %s: %v", tableName, err)
+			return nil, fmt.Errorf("error querying table %s -> %v", tableName, err)
 		}
 
 		for rows.Next() {
@@ -110,20 +135,20 @@ func (r *SQLBreachRepository) SearchBreachMatch(ctx context.Context, searchField
 				&fieldsJSON,
 			)
 			if err != nil {
-				return nil, fmt.Errorf("error scanning match: %v", err)
+				rows.Close()
+				return nil, fmt.Errorf("error scanning match -> %v", err)
 			}
 
-			// Skip if we've already seen this match
 			if seenMatches[match.ID] {
 				continue
 			}
 
 			match.Fields = make(map[string]string)
 			if err := json.Unmarshal(fieldsJSON, &match.Fields); err != nil {
-				return nil, fmt.Errorf("error parsing fields JSON: %v", err)
+				rows.Close()
+				return nil, fmt.Errorf("error parsing fields JSON -> %v", err)
 			}
 
-			// Only add matches that have at least one matching field
 			hasMatch := false
 			for _, status := range match.Fields {
 				if status == "Matched" {
@@ -145,17 +170,25 @@ func (r *SQLBreachRepository) SearchBreachMatch(ctx context.Context, searchField
 	}, nil
 }
 
-// Helper function to build the field check part of the query
-func buildFieldChecks(searchFields map[string]string) string {
+// Updated helper function to handle non-existent fields
+func buildFieldChecks(searchFields map[string]string, existingColumns map[string]bool) string {
 	var fieldChecks []string
 	for field, value := range searchFields {
-		fieldCheck := fmt.Sprintf(`
-			'%s',
-			CASE 
-				WHEN %[1]s = '%s' THEN 'Matched'
-				ELSE 'Not Matched'
-			END`,
-			field, value)
+		var fieldCheck string
+		if existingColumns[field] {
+			fieldCheck = fmt.Sprintf(`
+                '%s',
+                CASE
+                    WHEN %[1]s = '%s' THEN 'Matched'
+                    ELSE 'Not Matched'
+                END`,
+				field, value)
+		} else {
+			fieldCheck = fmt.Sprintf(`
+                '%s',
+                'Unable to Match'`,
+				field)
+		}
 		fieldChecks = append(fieldChecks, fieldCheck)
 	}
 	return strings.Join(fieldChecks, ",\n")
@@ -167,7 +200,7 @@ func (r *SQLBreachRepository) SearchSensitiveMatch(ctx context.Context, field st
 	breachRows, err := r.db.QueryContext(ctx, "SELECT * FROM breach_metadata WHERE $1 = ANY(breach_fields)", field)
 
 	if err != nil {
-		return nil, fmt.Errorf("error querying for field-table matches: %w", err)
+		return nil, fmt.Errorf("error querying for field-table matches-> %w", err)
 	}
 	defer breachRows.Close()
 
@@ -183,7 +216,7 @@ func (r *SQLBreachRepository) SearchSensitiveMatch(ctx context.Context, field st
 			pq.Array(&breach_metadata.Fields),
 			&breach_metadata.Link,
 		); err != nil {
-			return nil, fmt.Errorf("error scanning metadata: %w", err)
+			return nil, fmt.Errorf("error scanning metadata -> %w", err)
 		}
 		breaches = append(breaches, breach_metadata)
 	}
@@ -202,7 +235,7 @@ func (r *SQLBreachRepository) SearchSensitiveMatch(ctx context.Context, field st
 		// Then use the query with parameter for the value
 		rows, err := r.db.QueryContext(ctx, query, hash+"%")
 		if err != nil {
-			return nil, fmt.Errorf("error querying partial hash: %w", err)
+			return nil, fmt.Errorf("error querying partial hash -> %w", err)
 		}
 		// Each row = different hash string
 		for rows.Next() {
@@ -210,7 +243,7 @@ func (r *SQLBreachRepository) SearchSensitiveMatch(ctx context.Context, field st
 			if err := rows.Scan(
 				&hash,
 			); err != nil {
-				return nil, fmt.Errorf("error scanning partial hash: %w", err)
+				return nil, fmt.Errorf("error scanning partial hash -> %w", err)
 			}
 			matches[hash] = append(matches[hash], breach_metadata)
 		}
