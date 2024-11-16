@@ -25,7 +25,7 @@ func (s *BreachService) SearchBreach(ctx context.Context, req *models.NormalSear
 	response, err := s.breachRepo.SearchBreachMatch(ctx, req.Fields)
 
 	if err != nil {
-		return nil, fmt.Errorf("error searching breach match: %w", err)
+		return nil, fmt.Errorf("error searching breach match -> %w", err)
 	}
 
 	return response, nil
@@ -55,7 +55,7 @@ func (s *BreachService) SearchSensitive(ctx context.Context, req *models.Sensiti
 	match, err := s.breachRepo.SearchSensitiveMatch(ctx, req.Field, req.Hash)
 
 	if err != nil {
-		return nil, fmt.Errorf("error searching sensitive data: %w", err)
+		return nil, fmt.Errorf("error searching sensitive data -> %w", err)
 	}
 
 	potentialMatches := make(map[string]*models.NormalSearchResponse)
