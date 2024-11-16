@@ -7,6 +7,17 @@ import { X, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SHA1 } from 'crypto-js';
 
+const convertSnakeCase = (text: any) => {
+    const words = text.split("_");
+
+    for (let i=0; i < words.length; i++) {
+        words[i] = words[i][0].toUpperCase() + words[i].substring(1);
+    }
+
+    return words.join(" ")
+
+}
+
 interface SearchField {
     id: string;
     type: string;
@@ -119,11 +130,14 @@ export function Home() {
     
             if (data.Matches) {
                 const formattedResults = data.Matches.map((match: any) => ({
-                    service: match.name,
+                    service: convertSnakeCase(match.name),
                     date: match.date,
                     description: match.description,
                     severity: match.severity.toLowerCase(),
-                    breachedData: match.fields,
+                    breachedData: Object.entries(match.fields).reduce((acc, [key, value]) => {
+                        acc[convertSnakeCase(key)] = value; // Format the field key using formatFieldName
+                        return acc;
+                    }, {} as Record<string, string>),
                     changeLink: match.link
                 }));
                 setResults(formattedResults);
@@ -172,16 +186,17 @@ export function Home() {
                 const exactMatch = data.PotentialPasswords[fullHash];
                 
                 if (exactMatch && exactMatch.Matches) {
-                    // Format only the matches from our exact hash match
                     const formattedResults = exactMatch.Matches.map((match: any) => ({
-                        service: match.name,
+                        service: convertSnakeCase(match.name),
                         date: match.date,
                         description: match.description,
                         severity: match.severity.toLowerCase(),
-                        breachedData: match.fields,
+                        breachedData: Object.entries(match.fields).reduce((acc, [key, value]) => {
+                            acc[convertSnakeCase(key)] = value; // Format the field key using formatFieldName
+                            return acc;
+                        }, {} as Record<string, string>),
                         changeLink: match.link
                     }));
-    
                     setSensitiveResults(formattedResults);
                 } else {
                     setSensitiveResults([]); // No exact matches found
