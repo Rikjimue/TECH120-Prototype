@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SHA1 } from 'crypto-js';
+import { Eye, EyeOff } from "lucide-react";
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 const convertSnakeCase = (text: any) => {
     const words = text.split("_");
@@ -17,6 +20,19 @@ const convertSnakeCase = (text: any) => {
     return words.join(" ")
 
 }
+
+const StyledPhoneInput = ({ value, onChange }) => {
+    return (
+        <PhoneInput
+            international
+            countryCallingCodeEditable={false}
+            defaultCountry="US"
+            value={value}
+            onChange={onChange}
+            className="flex-grow"
+        />
+    );
+};
 
 interface SearchField {
     id: string;
@@ -51,12 +67,18 @@ export function Home() {
     const [results, setResults] = useState<BreachResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedField, setSelectedField] = useState<string | undefined>(undefined);
+    const [error, setError] = useState<string | null>(null);
+    const [showBreachError, setShowBreachError] = useState(false);
+    const [showNoBreachMatches, setShowNoBreachMatches] = useState(false);
 
     // For Sensitive Information Search
     const [sensitiveType, setSensitiveType] = useState('password');
     const [sensitiveValue, setSensitiveValue] = useState('');
     const [sensitiveResults, setSensitiveResults] = useState<BreachResult[]>([]);
     const [isSensitiveLoading, setIsSensitiveLoading] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
+    const [showSensitiveError, setShowSensitiveError] = useState(false);
+    const [showNoSensitiveMatches, setShowNoSensitiveMatches] = useState(false);
 
     const remainingFields = useMemo(() => {
         const usedLabels = new Set(searchFields.map(field => field.label));
@@ -91,6 +113,9 @@ export function Home() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setError(null);
+        setShowNoBreachMatches(false);
+        setShowBreachError(false);
         
         // Create a map of field labels to values
         const formattedSearchValues = searchFields.reduce((acc, field) => {
@@ -142,8 +167,16 @@ export function Home() {
                 }));
                 setResults(formattedResults);
             }
+            else {
+                setResults([]);
+                setShowNoBreachMatches(true);
+            }
         } catch (error) {
             console.error('Error details:', error);
+            setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+            setShowBreachError(true);
+            setShowNoBreachMatches(false);
+            setResults([]);
         } finally {
             setIsLoading(false);
         }
@@ -151,11 +184,16 @@ export function Home() {
 
     const handleCloseResults = () => {
         setResults([]);
+        setShowNoBreachMatches(false);
+        setShowBreachError(false);
     };
 
     const handleSensitiveSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSensitiveLoading(true);
+        setError(null);
+        setShowNoSensitiveMatches(false);
+        setShowSensitiveError(false);
         
         // Generate full SHA1 hash of the sensitive value
         const fullHash = SHA1(sensitiveValue).toString();
@@ -184,6 +222,7 @@ export function Home() {
             if (data.PotentialPasswords) {
                 // Find our exact match in the potential passwords using full hash
                 const exactMatch = data.PotentialPasswords[fullHash];
+                console.log(exactMatch);
                 
                 if (exactMatch && exactMatch.Matches) {
                     const formattedResults = exactMatch.Matches.map((match: any) => ({
@@ -198,12 +237,17 @@ export function Home() {
                         changeLink: match.link
                     }));
                     setSensitiveResults(formattedResults);
+                    setShowNoSensitiveMatches(true);
                 } else {
                     setSensitiveResults([]); // No exact matches found
+                    setShowNoSensitiveMatches(true);
                 }
             }
         } catch (error) {
             console.error('Error fetching sensitive breach data:', error);
+            setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+            setShowSensitiveError(true);
+            setSensitiveResults([]);
         } finally {
             setIsSensitiveLoading(false);
             setSensitiveValue('');
@@ -212,6 +256,8 @@ export function Home() {
 
     const handleCloseSensitiveResults = () => {
         setSensitiveResults([]);
+        setShowNoSensitiveMatches(false);
+        setShowSensitiveError(false);
     };
 
     const getSeverityDot = (severity: string) => {
@@ -223,6 +269,7 @@ export function Home() {
         return <span className={`inline-block w-3 h-3 rounded-full ${colors[severity]}`}></span>;
     };
 
+    console.log(showNoSensitiveMatches)
     return (
         <div className="container mx-auto p-4 text-gray-900 dark:text-gray-100">
             {/* Data Breach Checker Card */}
@@ -263,8 +310,16 @@ export function Home() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {searchFields.map(field => (
                             <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
-                                <Label htmlFor={field.id} className="text-sm font-medium text-gray-900 dark:text-gray-300 sm:w-1/4">{field.label}</Label>
-                                <div className="flex items-center w-full sm:w-3/4">
+                            <Label htmlFor={field.id} className="text-sm font-medium text-gray-900 dark:text-gray-300 sm:w-1/4">
+                                {field.label}
+                            </Label>
+                            <div className="flex items-center w-full sm:w-3/4 gap-2"> {/* Added gap-2 */}
+                                {field.type === 'tel' ? (
+                                    <StyledPhoneInput
+                                        value={searchValues[field.id] || ''}
+                                        onChange={(value) => handleFieldChange(field.id, value)}
+                                    />
+                                ) : (
                                     <Input
                                         id={field.id}
                                         type={field.type}
@@ -274,19 +329,20 @@ export function Home() {
                                         required
                                         className="flex-grow bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                     />
-                                    {searchFields.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => handleRemoveField(field.id)}
-                                            className="ml-2 text-gray-700 dark:text-gray-300"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
+                                )}
+                                {searchFields.length > 1 && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => handleRemoveField(field.id)}
+                                        className="text-gray-700 dark:text-gray-300"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
                             </div>
+                        </div>
                         ))}
                         <div className="flex justify-end items-center mt-4">
                             <Button type="submit" disabled={isLoading} className="bg-blue-800 text-white dark:bg-blue-700 dark:text-gray-100">
@@ -296,46 +352,93 @@ export function Home() {
                     </form>
                 </CardContent>
 
-                {results.length > 0 && (
+                {(results.length > 0 || showBreachError || showNoBreachMatches) && (
                     <CardFooter>
                         <div className="w-full space-y-4">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-lg font-semibold">Breach Results:</h3>
-                                <Button variant="ghost" size="sm" onClick={handleCloseResults}>
+                                <Button variant="ghost" size="sm" onClick={() => {handleCloseResults();}}>
                                     <X className="h-4 w-4 mr-2" /> Close Results
                                 </Button>
                             </div>
-                            {results.map((result, index) => (
-                                <Card key={index} className="bg-white dark:bg-gray-800">
+
+                            {showBreachError && (
+                                <Card className="bg-white dark:bg-gray-800">
                                     <CardHeader>
-                                        <CardTitle className="text-blue-800 dark:text-blue-700 flex items-center">
-                                            {getSeverityDot(result.severity)} <span className="ml-2">{result.service} Breach</span>
+                                        <CardTitle className="flex items-center text-red-600 dark:text-red-400">
+                                            <XCircle className="h-6 w-6 mr-2" />
+                                            Error Occurred
                                         </CardTitle>
-                                        <CardDescription>Breach Date: {result.date}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <p><strong>Description:</strong> {result.description}</p>
-                                        <div className="mt-4 space-y-4">
-                                            {Object.entries(result.breachedData).map(([field, status], idx) => (
-                                                <div key={idx} className="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700">
-                                                    <h4 className="text-blue-800 dark:text-blue-700 font-semibold text-base">{field}</h4>
-                                                    <p className="text-sm">Match Status: {status}</p>
-                                                    <p className="text-sm mt-2"><strong>Description:</strong> This field was exposed due to unauthorized access.</p>
-                                                    <p className="text-sm"><strong>Severity:</strong> {getSeverityDot(result.severity)}</p>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <p className="text-gray-900 dark:text-gray-100">{error}</p>
                                     </CardContent>
                                     <CardFooter>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                                            <strong>Recommended Actions:</strong> We recommend changing your password and enabling two-factor authentication.
-                                        </p>
-                                        <Button variant="link" href={result.changeLink} target="_blank" className="text-blue-600 dark:text-blue-400 underline">
-                                            Change Password or Update Account Details
+                                        <Button 
+                                            onClick={() => handleSubmit} 
+                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white"
+                                        >
+                                            Try Again
                                         </Button>
                                     </CardFooter>
                                 </Card>
-                            ))}
+                            )}
+
+                            {showNoBreachMatches && !showBreachError && (
+                                <Card className="bg-white dark:bg-gray-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center text-green-600 dark:text-green-400">
+                                            <CheckCircle className="h-6 w-6 mr-2" />
+                                            No Breaches Found
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-gray-900 dark:text-gray-100">
+                                            Good news! We couldn't find any data breaches associated with the information you provided.
+                                        </p>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Remember to stay vigilant and regularly check for potential data breaches.
+                                        </p>
+                                    </CardFooter>
+                                </Card>
+                            )}
+                            {results.length > 0 && !showBreachError && (
+                                results.map((result, index) => (
+                                    <Card key={index} className="bg-white dark:bg-gray-800">
+                                        <CardHeader>
+                                            <CardTitle className="text-blue-800 dark:text-blue-700 flex items-center">
+                                                {getSeverityDot(result.severity)} <span className="ml-2">{result.service} Breach</span>
+                                            </CardTitle>
+                                            <CardDescription>Breach Date: {result.date}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p><strong>Description:</strong> {result.description}</p>
+                                            <div className="mt-4 space-y-4">
+                                                {Object.entries(result.breachedData).map(([field, status], idx) => (
+                                                    <div key={idx} className="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700">
+                                                        <h4 className="text-blue-800 dark:text-blue-700 font-semibold text-base">{field}</h4>
+                                                        <p className="text-sm">Match Status: {status}</p>
+                                                        <p className="text-sm mt-2"><strong>Description:</strong> This field was exposed due to unauthorized access.</p>
+                                                        <p className="text-sm"><strong>Severity:</strong> {getSeverityDot(result.severity)}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                <strong>Recommended Actions:</strong> We recommend changing your password and enabling two-factor authentication.
+                                            </p>
+                                            <Button variant="link" asChild className="text-blue-600 dark:text-blue-400 underline">
+                                                <a href={result.changeLink} target="_blank" rel="noopener noreferrer">
+                                                    Secure your {sensitiveType}
+                                                </a>
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))
+                            )}
                         </div>
                     </CardFooter>
                 )}
@@ -367,15 +470,30 @@ export function Home() {
                             </div>
                             <div className="flex-grow">
                                 <Label htmlFor="sensitiveValue">Sensitive Value</Label>
-                                <Input
-                                    id="sensitiveValue"
-                                    type="text"
-                                    placeholder={`Enter ${sensitiveType}`}
-                                    value={sensitiveValue}
-                                    onChange={(e) => setSensitiveValue(e.target.value)}
-                                    required
-                                    className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="sensitiveValue"
+                                        type={isVisible ? "text" : "password"}
+                                        placeholder={`Enter ${sensitiveType}`}
+                                        value={sensitiveValue}
+                                        onChange={(e) => setSensitiveValue(e.target.value)}
+                                        required
+                                        className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 pr-10" // Added pr-10 for icon space
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                                        onClick={() => setIsVisible(!isVisible)}
+                                    >
+                                        {isVisible ? (
+                                            <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                        ) : (
+                                            <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                        )}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end mt-4">
@@ -386,46 +504,93 @@ export function Home() {
                     </form>
                 </CardContent>
 
-                {sensitiveResults.length > 0 && (
+                {(sensitiveResults.length > 0 || showNoSensitiveMatches || showSensitiveError) && (
                     <CardFooter>
                         <div className="w-full space-y-4">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-lg font-semibold">Sensitive Information Breach Results:</h3>
-                                <Button variant="ghost" size="sm" onClick={handleCloseSensitiveResults}>
+                                <Button variant="ghost" size="sm" onClick={() => {handleCloseSensitiveResults();}}>
                                     <X className="h-4 w-4 mr-2" /> Close Results
                                 </Button>
                             </div>
-                            {sensitiveResults.map((result, index) => (
-                                <Card key={index} className="bg-white dark:bg-gray-800">
+
+                            {showSensitiveError && (
+                                <Card className="bg-white dark:bg-gray-800">
                                     <CardHeader>
-                                        <CardTitle className="text-blue-800 dark:text-blue-700 flex items-center">
-                                            {getSeverityDot(result.severity)} <span className="ml-2">{result.service} Breach</span>
+                                        <CardTitle className="flex items-center text-red-600 dark:text-red-400">
+                                            <XCircle className="h-6 w-6 mr-2" />
+                                            Error Occurred
                                         </CardTitle>
-                                        <CardDescription>Breach Date: {result.date}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <p><strong>Description:</strong> {result.description}</p>
-                                        <div className="mt-4">
-                                            {Object.entries(result.breachedData).map(([field, status], idx) => (
-                                                <div key={idx} className="mb-2">
-                                                    <h4 className="text-blue-800 dark:text-blue-700 font-semibold text-base">{field}</h4>
-                                                    <p>Match Status: {status}</p>
-                                                    <p className="text-sm mt-2"><strong>Description:</strong> This field was exposed due to unauthorized access.</p>
-                                                    <p className="text-sm"><strong>Severity:</strong> {getSeverityDot(result.severity)}</p>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <p className="text-gray-900 dark:text-gray-100">{error}</p>
                                     </CardContent>
                                     <CardFooter>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                                            <strong>Recommended Actions:</strong> We recommend changing your {sensitiveType} information and enabling two-factor authentication.
-                                        </p>
-                                        <Button variant="link" href={result.changeLink} target="_blank" className="text-blue-600 dark:text-blue-400 underline">
-                                            Change {sensitiveType} Information
+                                        <Button 
+                                            onClick={() => handleSubmit} 
+                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white"
+                                        >
+                                            Try Again
                                         </Button>
                                     </CardFooter>
                                 </Card>
-                            ))}
+                            )}
+
+                            {showNoSensitiveMatches && !showSensitiveError && (
+                                <Card className="bg-white dark:bg-gray-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center text-green-600 dark:text-green-400">
+                                            <CheckCircle className="h-6 w-6 mr-2" />
+                                            No Breaches Found
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-gray-900 dark:text-gray-100">
+                                            Good news! We couldn't find any data breaches associated with the information you provided.
+                                        </p>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Remember to stay vigilant and regularly check for potential data breaches.
+                                        </p>
+                                    </CardFooter>
+                                </Card>
+                            )}
+                            {sensitiveResults.length > 0 && !showSensitiveError && (
+                                sensitiveResults.map((result, index) => (
+                                    <Card key={index} className="bg-white dark:bg-gray-800">
+                                        <CardHeader>
+                                            <CardTitle className="text-blue-800 dark:text-blue-700 flex items-center">
+                                                {getSeverityDot(result.severity)} <span className="ml-2">{result.service} Breach</span>
+                                            </CardTitle>
+                                            <CardDescription>Breach Date: {result.date}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p><strong>Description:</strong> {result.description}</p>
+                                            <div className="mt-4">
+                                                {Object.entries(result.breachedData).map(([field, status], idx) => (
+                                                    <div key={idx} className="mb-2">
+                                                        <h4 className="text-blue-800 dark:text-blue-700 font-semibold text-base">{field}</h4>
+                                                        <p>Match Status: {status}</p>
+                                                        <p className="text-sm mt-2"><strong>Description:</strong> This field was exposed due to unauthorized access.</p>
+                                                        <p className="text-sm"><strong>Severity:</strong> {getSeverityDot(result.severity)}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                <strong>Recommended Actions:</strong> We recommend changing your {sensitiveType} information and enabling two-factor authentication.
+                                            </p>
+                                            <Button variant="link" asChild className="text-blue-600 dark:text-blue-400 underline">
+                                                <a href={result.changeLink} target="_blank" rel="noopener noreferrer">
+                                                    Secure your {sensitiveType}
+                                                </a>
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))
+                            )}
                         </div>
                     </CardFooter>
                 )}
