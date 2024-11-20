@@ -31,8 +31,26 @@ func NewRouter(db *sql.DB) *http.ServeMux {
 	//mux.HandleFunc("POST /api/v0/signup", authHandler.Signup)
 	//mux.HandleFunc("POST /api/v0/login", authHandler.Login)
 
-	mux.HandleFunc("POST /api/v0/breach-checker", breachHandler.BreachChecker)
-	mux.HandleFunc("POST /api/v0/sensitive-checker", breachHandler.SensitiveChecker)
+	mux.Handle("/api/v0/breach-check", setupCORS(http.HandlerFunc(breachHandler.BreachChecker)))
+	mux.Handle("/api/v0/sensitive-check", setupCORS(http.HandlerFunc(breachHandler.SensitiveChecker)))
 
 	return mux
+}
+
+func setupCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "https://v5flsvdg-5173.use.devtunnels.ms")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

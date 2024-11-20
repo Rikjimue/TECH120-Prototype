@@ -28,6 +28,7 @@ export function Navbar() {
                 <div className="hidden md:flex md:space-x-6 items-center">
                     <Link to="/" className={getLinkClass("/")}>Home</Link>
                     <Link to="/dashboard" className={getLinkClass("/dashboard")}>Dashboard</Link>
+                    <Link to="/protect" className={getLinkClass("/protect")}>Protect your Data</Link>
                     <Link to="/about" className={getLinkClass("/about")}>About</Link>
                     <Link to="/pricing" className={getLinkClass("/pricing")}>Pricing</Link>
                     <Link to="/contact" className={getLinkClass("/contact")}>Contact</Link>
